@@ -32,11 +32,14 @@ export async function deliver(n: Notification): Promise<Channel[]> {
 /** Deliver queued pushes whose quiet window has ended as of `now`. */
 export async function flushQueuedPushes(now: Date): Promise<Notification[]> {
   const ready = pushQueue.filter((n) => !isQuietHours(now, n.timezone));
+  const sent: Notification[] = [];
   for (const n of ready) {
-    pushQueue.splice(pushQueue.indexOf(n), 1);
+    // Remove only after a successful send so a transient failure stays queued.
     await send('push', n);
+    pushQueue.splice(pushQueue.indexOf(n), 1);
+    sent.push(n);
   }
-  return ready;
+  return sent;
 }
 
 async function send(channel: Channel, n: Notification): Promise<void> {
